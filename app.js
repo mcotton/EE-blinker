@@ -26,7 +26,7 @@ var user        =       {},
 
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
-const port = new SerialPort('/dev/cu.usbmodem14101', { baudRate: 9600 });
+const port = new SerialPort(config.serial_port, { baudRate: 9600 });
 
 var reason_LED_is_on = undefined;
 
@@ -50,7 +50,8 @@ function startUp(success, failure) {
 function login(success, failure) {
     r.get({
             url: host + '/g/aaa/isauth',
-            jar: cookie_jars
+            jar: cookie_jars,
+            headers: {'Authorization': config.api_key }
         }, function(err, res, body) {
             if (err) { 
                 out("error in pre-login");
@@ -67,7 +68,8 @@ function login(success, failure) {
                         r.post({
                             url: host + '/g/aaa/authenticate',
                             json: true,
-                            body: { 'username': config.username, 'password': config.password, 'realm': 'eagleeyenetworks' }
+                            body: { 'username': config.username, 'password': config.password, 'realm': 'eagleeyenetworks' },
+                            headers: {'Authorization': config.api_key }
                             }, function(err, res, body) {
                                 if (err) { out("error in login1"); out(err.stack); }
                                 if (!err) {
@@ -75,7 +77,8 @@ function login(success, failure) {
                                         case 200:
                                             r.post({ url: host + '/g/aaa/authorize',
                                                     jar: cookie_jars,
-                                                    json: true, body: { token: res.body.token }
+                                                    json: true, body: { token: res.body.token },
+                                                    headers: {'Authorization': config.api_key }
                                                 }, function(err, res, body) {
                                                if (err) { out("error in login2"); out(err.stack); }
                                                if (!err && res.statusCode == 200) {
@@ -104,7 +107,8 @@ function login(success, failure) {
 function getDevices(success, failure) {
     r.get({ url: host + '/g/list/devices',
             json: true,
-            jar: cookie_jars
+            jar: cookie_jars,
+            headers: {'Authorization': config.api_key }
         }, function(err, res, body) {
         if (err) { out("error in getDevices"); out(err.stack) }
         if (!err && res.statusCode == 200) {
@@ -160,7 +164,8 @@ function startPolling() {
             url:    host + '/poll',
             jar: cookie_jars,
             json:   true,
-            body:   JSON.stringify( obj)
+            body:   JSON.stringify( obj),
+            headers: {'Authorization': config.api_key }
            }, function(err, res, body) {
                 if (err) { out("error in startPolling"); out(err.stack); startPolling() };
                 if (!err) {
@@ -210,6 +215,7 @@ function keepPolling() {
             url:    host + '/poll',
             jar: cookie_jars,
             json:   true,
+            headers: {'Authorization': config.api_key }
            }, function(err, res, body) {
                 if (err) { out("error in keepPolling"); out(err.stack); keepPolling();};
                 if (!err) {
@@ -309,7 +315,7 @@ function bootstrap() {
         },
         // failure case for login
         function() {
-            console.log('Failed to login using these credentials  ' + username + ' : ' + password );
+            console.log('Failed to login using these credentials  ' + config.username + ' : ' + config.password );
         });
     });
 }

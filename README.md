@@ -1,6 +1,6 @@
-###Watcher for Eagle Eye Networks Poll Stream###
+###EE-blinker for Eagle Eye Networks Poll Stream###
 
-This is a Node.js client that follows the [Eagle Eye Networks API](https://apidocs.eagleeyenetworks.com/apidocs/).  It listens for new preview images and then sends them to the client through [Socket.io](http://socket.io).  This is a great place to start if you want to strip the auth requirement for the images and make them available to less capable clients (phones, tvs, pictures frames, etc)  It is also a good place to see a simplified version of subscribing to events.
+This is a Node.js client that follows the [Eagle Eye Networks API](https://apidocs.eagleeyenetworks.com/apidocs/).  It listens for new motion events and then toggles an LED.  This is the basis for our real-time feed.
 
 ###Lifecycle of the app###
 The following steps need to be performed in order, but any call can be made once user is logged-in.
@@ -24,12 +24,29 @@ Checkout out the facedetection branch if you want to try something different wit
 
 ###Configure###
 
- Edit `config.js` and replace 'your_username' and 'your_password' with your username and password.
+ Edit `config.js` and replace 'your_username', 'your_password', and 'your_api_key' with your username, password, and api key.
 
 
         module.exports = {
-            'username'  :   'your_username',
-            'password'  :   'your_password'
+            // credentials for the app to use
+            'username': 'your_username',
+            'password': 'your_password',
+            'api_key': 'your_api_key',
+
+            // if you only want a subset of the cameras, put the ESNs here,
+            // empty means show all
+            'filter_cameras': [
+                "camera_esn"
+            ],
+
+            // what serial port should be connect to
+            'serial_port': '/dev/cu.usbmodem14101',
+
+            // where to save the auth file
+            'path_to_saved_cookie': './cookie'
+
+
         }
+
 
 
