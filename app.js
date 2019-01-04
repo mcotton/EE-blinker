@@ -24,6 +24,11 @@ var user        =       {},
     last_img    =       {};
     cached_img  =       {};
 
+const SerialPort = require('serialport');
+const Readline = require('@serialport/parser-readline');
+const port = new SerialPort('/dev/cu.usbmodem14101', { baudRate: 9600 });
+
+var reason_LED_is_on = undefined;
 
 var debug = function(arg) {
     repl.start({
@@ -33,19 +38,19 @@ var debug = function(arg) {
     }).context.arg = arg;
 };
 
-var cookie_jars = {}
+var cookie_jars = r.jar();
 
-function startUp(socket, success, failure) {
+function startUp(success, failure) {
     out('**********************************');
     out('           Starting up            ');
     out('**********************************');
     if ( typeof success === 'function') success(); // call success callback   
 }
 
-function login(socket, success, failure) {
+function login(success, failure) {
     r.get({
             url: host + '/g/aaa/isauth',
-            jar: cookie_jars[socket.id]
+            jar: cookie_jars
         }, function(err, res, body) {
             if (err) { 
                 out("error in pre-login");
@@ -69,7 +74,7 @@ function login(socket, success, failure) {
                                     switch(res.statusCode) {
                                         case 200:
                                             r.post({ url: host + '/g/aaa/authorize',
-                                                    jar: cookie_jars[socket.id],
+                                                    jar: cookie_jars,
                                                     json: true, body: { token: res.body.token }
                                                 }, function(err, res, body) {
                                                if (err) { out("error in login2"); out(err.stack); }
@@ -96,10 +101,10 @@ function login(socket, success, failure) {
     })
 }
 
-function getDevices(socket, success, failure) {
+function getDevices(success, failure) {
     r.get({ url: host + '/g/list/devices',
             json: true,
-            jar: cookie_jars[socket.id]
+            jar: cookie_jars
         }, function(err, res, body) {
         if (err) { out("error in getDevices"); out(err.stack) }
         if (!err && res.statusCode == 200) {
@@ -129,7 +134,7 @@ function getDevices(socket, success, failure) {
     });
 }
 
-function startPolling(socket) {
+function startPolling() {
     var obj = { 'cameras': {} };
 
     // u.each(u.filter(devices.bridges, function(item) { return item.deviceStatus === 'ATTD'; } ), function(item) {
@@ -143,7 +148,8 @@ function startPolling(socket) {
     }
 
     u.each(u.filter(cameras_to_poll, function(item) { return item.deviceStatus === 'ATTD' } ), function(item) {
-        obj.cameras[item.deviceID] = { "resource": ["pre"] };
+        // obj.cameras[item.deviceID] = { "resource": ["pre", "event"], "event": ["ROMS", "ROME"] };
+        obj.cameras[item.deviceID] = { "resource": ["event"], "event": ["ROMS", "ROME"] };
     });
 
     out('**********************************');
@@ -152,31 +158,31 @@ function startPolling(socket) {
 
     r.post({
             url:    host + '/poll',
-            jar: cookie_jars[socket.id],
+            jar: cookie_jars,
             json:   true,
             body:   JSON.stringify( obj)
            }, function(err, res, body) {
-                if (err) { out("error in startPolling"); out(err.stack); startPolling(socket) };
+                if (err) { out("error in startPolling"); out(err.stack); startPolling() };
                 if (!err) {
                     switch(res.statusCode) {
                         case 200:
-                            keepPolling(socket);
+                            keepPolling();
                             break;
                         case 500:
                             out(res.statusCode + ' in keepPolling()');
                             out(res.headers);
                             out(res.body);
-                            startPolling(socket);
+                            startPolling();
                             break;
                         case 502:
                         case 503:
                             out(res.statusCode + ' in keepPolling()');
                             out(res.headers);
                             out(res.body);
-                            keepPolling(socket);
+                            keepPolling();
                             break;
                         case 401:
-                            handle_401(socket);
+                            handle_401();
                             break;
                          default:
                             out(res.statusCode);
@@ -185,7 +191,7 @@ function startPolling(socket) {
                             out('**********************************');
                             out('           Restart Polling        ');
                             out('**********************************');
-                            startPolling(socket);
+                            startPolling();
                             break;
                     }
                 }
@@ -195,23 +201,23 @@ function startPolling(socket) {
 
 }
 
-function keepPolling(socket) {
+function keepPolling() {
     //out('**********************************');
     //out('           Keep Polling           ');
     //out('**********************************');
 
     r.get({
             url:    host + '/poll',
-            jar: cookie_jars[socket.id],
+            jar: cookie_jars,
             json:   true,
            }, function(err, res, body) {
-                if (err) { out("error in keepPolling"); out(err.stack); keepPolling(socket);};
+                if (err) { out("error in keepPolling"); out(err.stack); keepPolling();};
                 if (!err) {
                     switch(res.statusCode) {
                         case 200:
                             // got a valid polling cookie
-                            processPollingData(socket, res.body);
-                            keepPolling(socket);
+                            processPollingData(res.body);
+                            keepPolling();
                             break;
                         case 400:
                             out(res.statusCode + ' in keepPolling');
@@ -220,23 +226,23 @@ function keepPolling(socket) {
                             out('**********************************');
                             out('           Restart Polling        ');
                             out('**********************************');
-                            startPolling(socket);
+                            startPolling();
                             break;
                         case 401:
-                            handle_401(socket);
+                            handle_401();
                             break;
                         case 500:
                             out(res.statusCode + ' in keepPolling()');
                             out(res.headers);
                             out(res.body);
-                            startPolling(socket);
+                            startPolling();
                             break;
                         case 502:
                         case 503:
                             out(res.statusCode + ' in keepPolling()');
                             out(res.headers);
                             out(res.body);
-                            keepPolling(socket);
+                            keepPolling();
                             break;
                         default:
                             out(res.statusCode + ' in keepPolling()');
@@ -245,7 +251,7 @@ function keepPolling(socket) {
                             out('**********************************');
                             out('           Restart Polling        ');
                             out('**********************************');
-                            startPolling(socket);
+                            startPolling();
                             break;
                     }
                 }
@@ -254,31 +260,48 @@ function keepPolling(socket) {
 
 }
 
-function processPollingData(socket, data) {
+function processPollingData(data) {
     //out('**********************************');
     //out('           Processing Data        ');
     //out('**********************************');
     //out(data);
-    if(socket) {
-        socket.emit('poll', { data: data });
+
+    if(data.cameras['100a54ec'].event['ROMS']) {
+
+        if(reason_LED_is_on == undefined) {
+            port.write('1\n');
+            console.log("Turning ON: " + data.cameras['100a54ec'].event['ROMS'].eventid)
+            reason_LED_is_on = data.cameras['100a54ec'].event['ROMS'].eventid 
+        } else {
+            console.log("Got an ON when it was already ON")
+        }
     }
+
+    if(data.cameras['100a54ec'].event['ROME']) {
+        if(reason_LED_is_on) {
+            port.write('2\n');
+            console.log("Turning OFF: " + data.cameras['100a54ec'].event['ROME'].eventid);  
+        } else {
+            console.log("Got an OFF without a corresponding ON")
+        }
+        
+        reason_LED_is_on = undefined
+    }
+
 }
 
-function handle_401(socket) {
+function handle_401() {
     out("Got a 401, going to start the bootstrap process over again")
-    bootstrap(socket);
+    bootstrap();
 }
 
 
-function bootstrap(socket) {
-    // tell the client what their id is
-    socket.send(socket.id);
-    out('Client\'s socket id is: ' + socket.id);
-
-    startUp( socket, function() {
-        login( socket, function() {
-            getDevices(socket, function() {
-                startPolling(socket)
+function bootstrap() {
+    
+    startUp( function() {
+        login( function() {
+            getDevices( function() {
+                startPolling()
             },
             function() {
                 console.log('Failure case for getDevices()');
@@ -296,135 +319,16 @@ app.on('error', function(e) {
     console.log(e)
 });
 
-io.sockets.on('connection', function (socket) {
-    var _socket = socket
-
-    if(!(socket.id in cookie_jars)) {
-        cookie_jars[socket.id] = r.jar();
-    }
-
-    bootstrap(_socket);
-});
-
-io.sockets.on('disconnect', function(socket) {
-    out('socket disconnected', socket);
-});
-
-route.get('/image/{device}/{ts}', function(orig_req, orig_res) {
-    var ts      =   orig_req.params.ts,
-        device  =   orig_req.params.device;
-        socket_id = orig_req.params.socket_id;
-
-    //console.log('DEBUG: matching /image/' + device + '/' + ts);
-
-    // ts = (ts.indexOf('now') >= -1) ? 'now' : ts;
-
-    var url = host + '/asset/prev/image.jpeg?c=' + device + ';t=' + ts + ';q=high;a=pre';
-
-    socket_id = orig_req.url.match(/socket_id=(\S*)(\&*)/)[1]
-
-    if (!(device in last_img)) {
-        last_img[device] = "0"
-    }
-
-
-   // if(ts <= last_img[device]) {
-        // requested image is older
-        // send them the cached image
-        if(ts <= last_img[device]) {
-            orig_res.headers = {"content-type": "image/jpeg"};
-            orig_res.write(cached_img[device]);
-            orig_res.end();
-            out("Served image from cache!");
-            return;
-        } else {
-            out("fetching a new image for " + device);
-            last_img[device] = ts;
-        }
-
-    //} else {
-
-        var url = host + '/asset/prev/image.jpeg?c=' + device + ';t=' + ts + ';q=high;a=pre';
-
-        try {
-            r.get({ url: url,
-                    jar: cookie_jars[socket_id],
-                    encoding: null
-                }, function(err, res, body) {
-                    if (err) { out("error in GET /image/" + device + "/" + ts); out(err.stack);};
-                    if(!err && res.statusCode == 200) {                       
-                        cached_img[device] = new Buffer.alloc(parseInt(res.headers['content-length'], 10), body, 'base64');
-                        orig_res.headers = {"content-type": "image/jpeg"};
-                        orig_res.write(cached_img[device]);
-                        orig_res.end();
-                    }
-                    
-                })
-            //.pipe(orig_res);
-
-        } catch(e) {
-            out('error in fetching images: ', e)
-        }
-
-   // }
-
-});
-
-
-route.get('/jquery.preview.js', function(req, res) {
-  fs.readFile(__dirname + '/jquery.preview.js',
-  function (err, data) {
-    if (err) {
-      res.writeHead(500);
-      return res.end('Error loading /jquery.preview.js');
-    }
-
-    res.writeHead(200);
-    res.end(data);
-
-    out('serving /jquery.preview.js');
-
-  });
-});
-
-route.get('/:device', function(req, res) {
-  fs.readFile(__dirname + '/page.html',
-  function (err, data) {
-    if (err) {
-      res.writeHead(500);
-      return res.end('Error loading page.html');
-    }
-
-    res.writeHead(200);
-    res.end(data);
-
-    out('serving /page.html');
-
-  });
-});
-
-route.get('*', function(req, res) {
-  fs.readFile(__dirname + '/index.html',
-  function (err, data) {
-    if (err) {
-      res.writeHead(500);
-      return res.end('Error loading index.html');
-    }
-
-    res.writeHead(200);
-    res.end(data);
-
-    out('serving /index.html');
-
-  });
-});
-
 
 
 process.on('uncaughtException', function(err) {
   console.log('Caught exception: ' + err);
   switch(err) {
     case 'Error: Parse Error':
+        out(err);
+        break;
+    default:
+        out('We caught an uncaughtException')
         out(err);
         break;
   }
@@ -436,4 +340,4 @@ process.on('SIGTERM', function () {
   });
 });
 
-
+bootstrap();
