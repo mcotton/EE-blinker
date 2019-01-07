@@ -59,6 +59,7 @@ function login(success, failure) {
                 if ( typeof failure === 'function') failure(); 
             }
             if (!err) {
+                console.log('isauth status code: ' + res.statusCode);
                 switch(res.statusCode) {
                     case 200:
                         out('*********** Auth is still good ***************');
@@ -77,7 +78,8 @@ function login(success, failure) {
                                         case 200:
                                             r.post({ url: host + '/g/aaa/authorize',
                                                     jar: cookie_jars,
-                                                    json: true, body: { token: res.body.token },
+                                                    json: true, 
+                                                    body: { token: res.body.token },
                                                     headers: {'Authorization': config.api_key }
                                                 }, function(err, res, body) {
                                                if (err) { out("error in login2"); out(err.stack); }
@@ -152,26 +154,36 @@ function startPolling() {
     }
 
     u.each(u.filter(cameras_to_poll, function(item) { return item.deviceStatus === 'ATTD' } ), function(item) {
-        // obj.cameras[item.deviceID] = { "resource": ["pre", "event"], "event": ["ROMS", "ROME"] };
         obj.cameras[item.deviceID] = { "resource": ["event"], "event": ["ROMS", "ROME"] };
+        // obj.cameras[item.deviceID] = { "resource": ["event"], "event": ["ROMS", "ROME"] };
     });
 
     out('**********************************');
     out('           Start Polling          ');
     out('**********************************');
 
+    process.stdout.write("Making a request from startPolling... ");
     r.post({
             url:    host + '/poll',
             jar: cookie_jars,
-            json:   true,
+            time: true,
             body:   JSON.stringify( obj),
             headers: {'Authorization': config.api_key }
            }, function(err, res, body) {
+                console.log(res.statusCode + " in " + res.elapsedTime + 'ms');
                 if (err) { out("error in startPolling"); out(err.stack); startPolling() };
                 if (!err) {
                     switch(res.statusCode) {
                         case 200:
                             keepPolling();
+                            break;
+                        case 400:
+                            out(' *********** 400 Bad Request ??? *************');
+                            out(res.headers);
+                            out(res.body);
+                            out(cookie_jars);
+                            out(obj)
+                            //startPolling();
                             break;
                         case 500:
                             out(res.statusCode + ' in keepPolling()');
@@ -180,10 +192,7 @@ function startPolling() {
                             startPolling();
                             break;
                         case 502:
-                        case 503:
-                            out(res.statusCode + ' in keepPolling()');
-                            out(res.headers);
-                            out(res.body);
+                            out(' *********** 502 Gateway timeout *************');
                             keepPolling();
                             break;
                         case 401:
@@ -211,12 +220,15 @@ function keepPolling() {
     //out('           Keep Polling           ');
     //out('**********************************');
 
+    process.stdout.write("Making a request from keepPolling... ");
     r.get({
             url:    host + '/poll',
             jar: cookie_jars,
-            json:   true,
+            json: true,
+            time: true,
             headers: {'Authorization': config.api_key }
            }, function(err, res, body) {
+                console.log(res.statusCode + " in " + res.elapsedTime + 'ms');
                 if (err) { out("error in keepPolling"); out(err.stack); keepPolling();};
                 if (!err) {
                     switch(res.statusCode) {
@@ -226,12 +238,10 @@ function keepPolling() {
                             keepPolling();
                             break;
                         case 400:
-                            out(res.statusCode + ' in keepPolling');
+                            out(' *********** 400 Bad Request ??? *************');
                             out(res.headers);
                             out(res.body);
-                            out('**********************************');
-                            out('           Restart Polling        ');
-                            out('**********************************');
+                            out(cookie_jars);
                             startPolling();
                             break;
                         case 401:
@@ -244,10 +254,8 @@ function keepPolling() {
                             startPolling();
                             break;
                         case 502:
-                        case 503:
-                            out(res.statusCode + ' in keepPolling()');
-                            out(res.headers);
-                            out(res.body);
+                            out(' *********** 502 Gateway timeout *************');
+                            //startPolling();
                             keepPolling();
                             break;
                         default:
@@ -271,6 +279,9 @@ function processPollingData(data) {
     //out('           Processing Data        ');
     //out('**********************************');
     //out(data);
+
+    // console.log(data);
+    // console.log(data['cameras']);
 
     if(data.cameras['100a54ec'].event['ROMS']) {
 

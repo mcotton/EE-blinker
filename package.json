@@ -4,10 +4,11 @@
   "description": "Watching the poll stream",
   "main": "app.js",
   "dependencies": {
-    "request": "~2.21.0",
-    "underscore": "~1.4.4",
+    "request": "~2.88.0",
+    "router": "~0.6.2",
+    "serialport": "^7.1.1",
     "socket.io": "~0.9.14",
-    "router": "~0.6.2"
+    "underscore": "~1.4.4"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
