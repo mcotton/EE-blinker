@@ -154,8 +154,8 @@ function startPolling() {
     }
 
     u.each(u.filter(cameras_to_poll, function(item) { return item.deviceStatus === 'ATTD' } ), function(item) {
-        obj.cameras[item.deviceID] = { "resource": ["event"], "event": ["ROMS", "ROME"] };
-        // obj.cameras[item.deviceID] = { "resource": ["event"], "event": ["ROMS", "ROME"] };
+        //obj.cameras[item.deviceID] = { "resource": ["event"], "event": ["ROMS", "ROME"] };
+        obj.cameras[item.deviceID] = { "resource": ["event", "preview"], "event": ["ROMS", "ROME"] };
     });
 
     out('**********************************');
@@ -343,10 +343,12 @@ process.on('uncaughtException', function(err) {
   switch(err) {
     case 'Error: Parse Error':
         out(err);
+        bootstrap();
         break;
     default:
         out('We caught an uncaughtException')
         out(err);
+        bootstrap();
         break;
   }
 });
