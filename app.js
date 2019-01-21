@@ -112,7 +112,7 @@ function getDevices(success, failure) {
             jar: cookie_jars,
             headers: {'Authorization': config.api_key }
         }, function(err, res, body) {
-        if (err) { out("error in getDevices"); out(err.stack) }
+        if (err) { out("error in getDevices"); out(err.stack);  bootstrap(); }
         if (!err && res.statusCode == 200) {
             out('**********************************');
             out('           Grabbed Devices        ');
@@ -136,6 +136,9 @@ function getDevices(success, failure) {
             });
 
             if ( typeof success === 'function') success(); // call success callback
+        } else {
+            out("Error in getDevices, got: ", res.statusCode);
+            bootstrap();
         }
     });
 }
@@ -170,9 +173,9 @@ function startPolling() {
             body:   JSON.stringify( obj),
             headers: {'Authorization': config.api_key }
            }, function(err, res, body) {
-                console.log(res.statusCode + " in " + res.elapsedTime + 'ms');
                 if (err) { out("error in startPolling"); out(err.stack); startPolling() };
                 if (!err) {
+                    console.log(res.statusCode + " in " + res.elapsedTime + 'ms');
                     switch(res.statusCode) {
                         case 200:
                             keepPolling();
@@ -183,7 +186,7 @@ function startPolling() {
                             out(res.body);
                             out(cookie_jars);
                             out(obj)
-                            //startPolling();
+                            startPolling();
                             break;
                         case 500:
                             out(res.statusCode + ' in keepPolling()');
@@ -322,6 +325,7 @@ function bootstrap() {
             },
             function() {
                 console.log('Failure case for getDevices()');
+                bootstrap();
             });
         },
         // failure case for login
