@@ -231,7 +231,9 @@ function keepPolling() {
             time: true,
             headers: {'Authorization': config.api_key }
            }, function(err, res, body) {
-                console.log(res.statusCode + " in " + res.elapsedTime + 'ms');
+                if(res && res.statusCode) {
+                    console.log(res.statusCode + " in " + res.elapsedTime + 'ms');
+                }
                 if (err) { out("error in keepPolling"); out(err.stack); keepPolling();};
                 if (!err) {
                     switch(res.statusCode) {
