@@ -1,8 +1,8 @@
-###EE-blinker for Eagle Eye Networks Poll Stream###
+## EE-blinker for Eagle Eye Networks Poll Stream ##
 
 This is a Node.js client that follows the [Eagle Eye Networks API](https://apidocs.eagleeyenetworks.com/apidocs/).  It listens for new motion events and then toggles an LED.  This is the basis for our real-time feed.
 
-###Lifecycle of the app###
+## Lifecycle of the app ##
 The following steps need to be performed in order, but any call can be made once user is logged-in.
 
  - Login (step 1)
@@ -12,17 +12,17 @@ The following steps need to be performed in order, but any call can be made once
  - Subscribe to poll stream
  - Get subsequent events from poll stream
 
-###Installation###
+### Installation ###
 
  - install [Node.js](http://nodejs.org)
  - run `npm install	` 
  - run `npm start	`
  - go to [http://localhost:3000](http://localhost:3000)
 
-###Extras###
+### Extras ###
 Checkout out the facedetection branch if you want to try something different with the previews.  It will show the image in grayscale if it doesn't detect a face.  Not really useful, but interesting example of using node-opencv
 
-###Configure###
+### Configure ###
 
  Edit `config.js` and replace 'your_username', 'your_password', and 'your_api_key' with your username, password, and api key.
 
