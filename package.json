@@ -8,7 +8,7 @@
     "router": "~0.6.2",
     "serialport": "^7.1.1",
     "socket.io": "~0.9.14",
-    "underscore": "~1.4.4"
+    "underscore": "~1.12.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
